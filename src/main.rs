@@ -8,7 +8,7 @@ fn main() {
     let mut data = Vec::<u8>::new();
     let _ = rom.read_to_end(&mut data);
 
-    println!("Data: {:?}", data);
+    // println!("Data: {:?}", data);
 
     let mut chip8 = Chip8::new();
     chip8.load_rom(&data);
