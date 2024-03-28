@@ -1,9 +1,11 @@
 use std::{fs::File, io::Read};
-use chip8::Chip8;
 
 mod chip8;
-mod ram;
 mod cpu;
+mod ram;
+
+use chip8::Chip8;
+
 fn main() {
     let mut rom = File::open("test_roms/INVADERS").unwrap();
     let mut data = Vec::<u8>::new();

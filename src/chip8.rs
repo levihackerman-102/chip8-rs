@@ -1,8 +1,7 @@
 use ram::Ram;
 use crate::ram;
-
-use crate::cpu;
 use cpu::Cpu;
+use crate::cpu;
 
 pub struct Chip8 {
     ram: Ram,
@@ -18,13 +17,12 @@ impl Chip8 {
     }
 
     pub fn load_rom(&mut self, data: &Vec<u8>) {
-        let offset = 0x200;
         for i in 0..data.len() {
-            self.ram.write_byte((offset + i) as u16, data[i]);
+            self.ram.write_byte((cpu::PROGRAM_START + (i as u16)) as u16, data[i]);
         }
     }
 
     pub fn run_instruction(&mut self) {
-        self.cpu.run_instruction();        
+        self.cpu.run_instruction(&mut self.ram);        
     }
 }
