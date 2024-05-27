@@ -3,6 +3,9 @@ use std::{fs::File, io::Read};
 mod chip8;
 mod cpu;
 mod ram;
+mod keyboard;
+mod display;
+pub mod bus;
 
 use chip8::Chip8;
 
