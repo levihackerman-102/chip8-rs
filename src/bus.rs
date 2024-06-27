@@ -1,10 +1,16 @@
+use crate::ram;
+use ram::Ram;
+use crate::keyboard;
 use keyboard::Keyboard;
+use crate::display;
 use display::Display;
+
+
 
 pub struct Bus {
     ram: Ram,
     keyboard: Keyboard,
-    display: Display,
+    display: Display
 }
 
 impl Bus {
@@ -12,13 +18,13 @@ impl Bus {
         Bus {
             ram: Ram::new(),
             keyboard: Keyboard::new(),
-            display: Display::new(),
+            display: Display::new()
         }
     }
 
-    pub fn ram_read_byte(&self, address: u16) {
-        self.ram.read_byte(address);
-    } 
+    pub fn ram_read_byte(&mut self, address: u16) -> u8 {
+        self.ram.read_byte(address)
+    }
 
     pub fn ram_write_byte(&mut self, address: u16, value: u8) {
         self.ram.write_byte(address, value);

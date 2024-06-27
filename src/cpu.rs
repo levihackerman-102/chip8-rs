@@ -1,7 +1,6 @@
-use std::fmt::{self, write};
-
-use bus::Bus;
 use crate::bus;
+use bus::Bus;
+use std::fmt;
 
 pub const PROGRAM_START: u16 = 0x200;
 
@@ -10,7 +9,7 @@ pub struct Cpu {
     pc: u16,
     i: u16,
     prev_pc: u16,
-    ret_stack: Vec <u16>,
+    ret_stack: Vec<u16>
 }
 
 impl Cpu {
@@ -20,108 +19,109 @@ impl Cpu {
             pc: PROGRAM_START,
             i: 0,
             prev_pc: 0,
-            ret_stack: Vec::<u16>::new(),
+            ret_stack: Vec::<u16>::new()
         }
     }
 
     pub fn run_instruction(&mut self, bus: &mut Bus) {
-        
         let hi = bus.ram_read_byte(self.pc) as u16;
-        let lo = bus.ram_read_byte(self.pc+1) as u16;
+        let lo = bus.ram_read_byte(self.pc + 1) as u16;
         let instruction: u16 = (hi << 8) | lo;
-        println!("Instruction read {:#X}: hi {:#X} lo {:#X} ", instruction, hi, lo);
-        
-        let nnn = instruction & 0x0fff;
-        let nn = (instruction & 0x00ff) as u8;
-        let n = (instruction & 0x000f) as u8;
-        let x = ((instruction & 0x0f00) >> 8) as u8;
-        let y = ((instruction & 0x00f0) >> 4) as u8;
-        println!("nnn={:?}, nn={:?}, n={:?}, x={}, y={}", nnn, nn, n, x, y);
+        println!(
+            "Instruction read {:#X}: hi{:#X} lo:{:#X} ",
+            instruction, hi, lo
+        );
+
+        let nnn = instruction & 0x0FFF;
+        let nn = (instruction & 0x00FF) as u8;
+        let n = (instruction & 0x000F) as u8;
+        let x = ((instruction & 0x0F00) >> 8) as u8;
+        let y = ((instruction & 0x00F0) >> 4) as u8;
+        println!("nnn={:?}, nn={:?}, n={:?} x={}, y={}", nnn, nn, n, x, y);
 
         if self.prev_pc == self.pc {
-            panic!("Please increment pc!");
+            panic!("Please increment PC!");
         }
         self.prev_pc = self.pc;
 
-        match (instruction & 0xf000) >> 12 {
+        match (instruction & 0xF000) >> 12 {
             0x1 => {
-                // goto nnn
+                //goto nnn;
                 self.pc = nnn;
-            },
+            }
             0x2 => {
-                // call subroutine at nnn
-                self.ret_stack.push(self.pc+2);
+                // call subroutine at address nnn
+                self.ret_stack.push(self.pc + 2);
                 self.pc = nnn;
-            },
+            }
             0x3 => {
-                // skip next instr if Vx == NN
+                //if(Vx==NN)
                 let vx = self.read_reg_vx(x);
                 if vx == nn {
                     self.pc += 4;
-                }
-                else {
+                } else {
                     self.pc += 2;
                 }
             }
             0x6 => {
-                // Vx = nn
+                //vx = nn
                 self.write_reg_vx(x, nn);
                 self.pc += 2;
-            },
+            }
             0x7 => {
                 let vx = self.read_reg_vx(x);
                 self.write_reg_vx(x, vx.wrapping_add(nn));
                 self.pc += 2;
-            },
+            }
             0x8 => {
                 match n {
                     0 => {
-                        // Vx = Vy
-                        let vy = self.read_reg_vx(x);
-                        self.write_reg_vx(x, vy);
+                        let vy = self.read_reg_vx(y);
+                        self.write_reg_vx(y, vy);
                         self.pc += 2;
                     }
-                    _ => panic!("Unrecognized 8XY* instruction {:#X}:{:#X}", self.pc, instruction)
-                }
-            },
+                    _ => panic!("Unrecognized 0x8XY* instruction {:#X}:{:#X}", self.pc, instruction)  
+                };
+            }
+            0xD => {
+                //draw(Vx,Vy,N)
+                self.debug_draw_sprite(bus, x, y, n);
+                self.pc += 2;
+            }
             0xA => {
-                // i = nnn
+                //I = NNN
                 self.i = nnn;
                 self.pc += 2;
-            },
-            0xD => {
-                // draw(Vx,Vy,N)
-                self.debug_draw_sprite(bus, x, y,n);
-                self.pc += 2;
-            },
-            // 0xE => {
-            //     match nn {
-            //         0xA1 => {
-            //             // if key() != Vx, skip the next instruction
-            //             let key = self.read_reg_vx(x);
-            //             if key 
-            //         }
-            //         _ => panic!("Unrecognized EX** instruction {:#X}:{:#X}", self.pc, instruction)
-            //     }
-            // },
+            }
+            0xE => {
+                match nn {
+                    0xA1 => {
+                        // if key() != vx, skip next instruction
+                        let key = self.read_reg_vx(x);
+                        
+                    }
+                    _ => panic!("Unrecognized 0xEE** instruction {:#X}:{:#X}", self.pc, instruction)
+                }
+            }
             0xF => {
-                // i += Vx
+                //I +=Vx
                 let vx = self.read_reg_vx(x);
                 self.i += vx as u16;
                 self.pc += 2;
             }
-            _ => panic!("Unrecognized instruction {:#X}:{:#X}", self.pc, instruction)
-        }
 
+            _ => panic!("Unrecognized instruction {:#X}:{:#X}", self.pc, instruction),
+        }
     }
 
-    fn debug_draw_sprite(&self, bus: &Bus, x: u8, y: u8, height: u8) {
+    fn debug_draw_sprite(&self, bus: &mut Bus, x: u8, y: u8, height: u8) {
         println!("Drawing sprite at ({}, {})", x, y);
-        
         for y in 0..height {
             let mut b = bus.ram_read_byte(self.i + y as u16);
             bus.debug_draw_byte(b, x, y);
-        } 
+        }
+
+        print!("\n");
     }
 
     pub fn write_reg_vx(&mut self, index: u8, value: u8) {
@@ -135,9 +135,9 @@ impl Cpu {
 
 impl fmt::Debug for Cpu {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "\npc: {:#X}\n", self.pc)?;
+        write!(f, "pc: {:#X}\n", self.pc)?;
         write!(f, "vx: ")?;
-        for item in &self.vx {
+        for item in self.vx.iter() {
             write!(f, "{:#X} ", *item)?;
         }
         write!(f, "\n")?;
