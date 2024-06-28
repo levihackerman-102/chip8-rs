@@ -98,7 +98,12 @@ impl Cpu {
                     0xA1 => {
                         // if key() != vx, skip next instruction
                         let key = self.read_reg_vx(x);
-                        
+                        if bus.key_pressed(key) {
+                            self.pc += 2;
+                        }
+                        else {
+                            self.pc += 4;
+                        }
                     }
                     _ => panic!("Unrecognized 0xEE** instruction {:#X}:{:#X}", self.pc, instruction)
                 }
@@ -114,11 +119,22 @@ impl Cpu {
         }
     }
 
-    fn debug_draw_sprite(&self, bus: &mut Bus, x: u8, y: u8, height: u8) {
+    fn debug_draw_sprite(&mut self, bus: &mut Bus, x: u8, y: u8, height: u8) {
         println!("Drawing sprite at ({}, {})", x, y);
+        let mut should_set_vf = false;
+        
         for y in 0..height {
-            let mut b = bus.ram_read_byte(self.i + y as u16);
-            bus.debug_draw_byte(b, x, y);
+            let b = bus.ram_read_byte(self.i + y as u16);
+            if bus.debug_draw_byte(b, x, y) {
+                should_set_vf = true;
+            }
+        }
+        
+        if should_set_vf {
+            self.write_reg_vx(0xF, 1);
+        }
+        else {
+            self.write_reg_vx(0xF, 0);
         }
 
         print!("\n");

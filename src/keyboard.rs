@@ -8,7 +8,7 @@ impl Keyboard {
     }
  
     // implement key handling
-    pub fn key_pressed(key_code: u8) -> bool {
+    pub fn key_pressed(&self, key_code: u8) -> bool {
         true
     }
 }
