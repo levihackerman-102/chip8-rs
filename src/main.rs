@@ -1,20 +1,18 @@
-use std::{fs::File, io::Read};
+use std::fs::File;
+use std::io::Read;
+use chip8::Chip8;
 
-mod chip8;
-mod cpu;
 mod ram;
+mod cpu;
+mod chip8;
 mod display;
 mod keyboard;
 mod bus;
 
-use chip8::Chip8;
-
 fn main() {
-    let mut rom = File::open("test_roms/INVADERS").unwrap();
+    let mut file = File::open("test_roms/INVADERS").unwrap();
     let mut data = Vec::<u8>::new();
-    let _ = rom.read_to_end(&mut data);
-
-    // println!("Data: {:?}", data);
+    let _ = file.read_to_end(&mut data);
 
     let mut chip8 = Chip8::new();
     chip8.load_rom(&data);
