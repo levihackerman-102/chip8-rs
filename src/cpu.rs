@@ -145,8 +145,13 @@ impl Cpu {
             }
             0xD => {
                 //draw(Vx,Vy,N)
+                let x = self.read_reg_vx(x); // wrap around screen width
+                let y = self.read_reg_vx(y); // wrap around screen height
                 self.debug_draw_sprite(bus, x, y, n);
                 self.pc += 2;
+                // if x != 0 && y != 1 {
+                //     panic!();
+                // }
             }
             0xE => {
                 match nn {
