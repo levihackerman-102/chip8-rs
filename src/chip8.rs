@@ -1,7 +1,6 @@
 use bus::Bus;
+use cpu;
 use cpu::Cpu;
-
-use crate::{bus, cpu};
 
 pub struct Chip8 {
     bus: Bus,
@@ -27,5 +26,9 @@ impl Chip8 {
         self.cpu.run_instruction(&mut self.bus);
         println!("Cpu state: {:?}", self.cpu);
         println!("Bus state: {:?}", self.bus);
+    }
+
+    pub fn get_display_buffer(&self) -> &[u8] {
+        self.bus.get_display_buffer()
     }
 }

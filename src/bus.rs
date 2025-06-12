@@ -3,8 +3,6 @@ use display::Display;
 use ram::Ram;
 use std::fmt;
 
-use crate::{display, keyboard, ram};
-
 pub struct Bus {
     ram: Ram,
     keyboard: Keyboard,
@@ -59,6 +57,10 @@ impl Bus {
 
     pub fn get_delay_timer(&self) -> u8 {
         self.delay_timer
+    }
+
+    pub fn get_display_buffer(&self) -> &[u8] {
+        self.display.get_display_buffer()
     }
 }
 
