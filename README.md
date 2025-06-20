@@ -1,2 +1,2 @@
-# rust-chip8
+# chip8-rs
 CHIP-8 emulator in rust

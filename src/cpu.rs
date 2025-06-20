@@ -8,6 +8,7 @@ pub struct Cpu {
     pc: u16,
     i: u16,
     ret_stack: Vec<u16>,
+    rng: rand::rngs::ThreadRng,
 }
 
 
@@ -18,6 +19,7 @@ impl Cpu {
             pc: PROGRAM_START,
             i: 0,
             ret_stack: Vec::<u16>::new(),
+            rng: rand::rng(),
         }
     }
 
@@ -86,6 +88,16 @@ impl Cpu {
                     self.pc += 2;
                 }
             }
+            0x5 => {
+                // Skip next instr if Vx==Vy
+                let vx = self.read_reg_vx(x);
+                let vy = self.read_reg_vx(y);
+                if vx == vy {
+                    self.pc += 4;
+                } else {
+                    self.pc += 2;
+                }
+            }
             0x6 => {
                 //vx = nn
                 self.write_reg_vx(x, nn);
@@ -129,10 +141,27 @@ impl Cpu {
                         }
                     }
                     6 => {
-                        // Vx=Vy=Vy>>1
+                        // Vx = Vx>>1
                         self.write_reg_vx(0xF, vy & 0x1);
                         self.write_reg_vx(y, vy >> 1);
                         self.write_reg_vx(x, vy >> 1);
+                    }
+                    7 => {
+                        // Vx = Vy - Vx
+                        let diff: i8 = vy as i8 - vx as i8;
+                        self.write_reg_vx(x, diff as u8);
+                        if diff < 0 {
+                            self.write_reg_vx(0xF, 1);
+                        }
+                        else {
+                            self.write_reg_vx(0xF, 0);
+                        }
+                    }
+                    0xE => {
+                        // VF is the most significant bit value
+                        // SHR Vx
+                        self.write_reg_vx(0xF, (vx & 0x80) >> 7);
+                        self.write_reg_vx(x, vx << 1);
                     }
                     _ => panic!(
                         "Unrecognized 0x8XY* instruction {:#X}:{:#X}",
@@ -141,6 +170,33 @@ impl Cpu {
                     ),
                 };
 
+                self.pc += 2;
+            }
+            0x9 => {
+                // Skip next instruction if Vx!=Vy
+                let vx = self.read_reg_vx(x);
+                let vy = self.read_reg_vx(y);
+                if vx != vy {
+                    self.pc += 4;
+                } else {
+                    self.pc += 2;
+                }
+            }
+            0xA => {
+                // I = NNN
+                self.i = nnn;
+                self.pc += 2;
+            }
+            0xB => {
+                // Jump to NNN + V0
+                let v0 = self.read_reg_vx(0);
+                self.pc = nnn + v0 as u16;
+            }
+            0xC => {
+                // Vx = rand() & nn
+                let random_byte = rand::random::<u8>();
+                let result = random_byte & nn;
+                self.write_reg_vx(x, result);
                 self.pc += 2;
             }
             0xD => {
@@ -177,11 +233,6 @@ impl Cpu {
                     ),
                 };
             }
-            0xA => {
-                //I = NNN
-                self.i = nnn;
-                self.pc += 2;
-            }
             0xF => {
                 match nn {
                     0x07 => {
@@ -195,7 +246,7 @@ impl Cpu {
                                 self.write_reg_vx(x, val);
                                 self.pc += 2;
                             }
-                            None => ()
+                            None => (),
                         }
                     },
                     0x15 => {
@@ -207,20 +258,47 @@ impl Cpu {
                         //TODO implement sound
                         self.pc += 2;
                     },
-                    0x65 => {
-                        for index in 0..x+1 {
-                            let value = bus.ram_read_byte(self.i + index as u16);
-                            self.write_reg_vx(index, value);
-                        }
-                        self.pc += 2;
-                    },
                     0x1E => {
                         //I +=Vx
                         let vx = self.read_reg_vx(x);
                         self.i += vx as u16;
                         self.pc += 2;
                     },
-                    _ => panic!("Unrecognized 0xF instruction {:#X}:{:#X}", self.pc, instruction)
+                    0x29 => {
+                        //i == sprite address for character in Vx
+                        //Multiply by 5 because each sprite has 5 lines, each line
+                        //is 1 byte.
+                        self.i = self.read_reg_vx(x) as u16 * 5;
+                        self.pc += 2;
+                    },
+                    0x33 => {
+                        let vx = self.read_reg_vx(x);
+                        bus.ram_write_byte(self.i, vx / 100);
+                        bus.ram_write_byte(self.i + 1, (vx % 100) / 10);
+                        bus.ram_write_byte(self.i + 2, vx % 10);
+                        self.pc += 2;
+                    },
+                    0x55 => {
+                        for index in 0..x + 1 {
+                            let value = self.read_reg_vx(index);
+                            bus.ram_write_byte(self.i + index as u16, value);
+                        }
+                        self.i += x as u16 + 1;
+                        self.pc += 2;
+                    },
+                    0x65 => {
+                        for index in 0..x + 1 {
+                            let value = bus.ram_read_byte(self.i + index as u16);
+                            self.write_reg_vx(index, value);
+                        }
+                        self.i += x as u16 + 1;
+                        self.pc += 2;
+                    },
+                    _ => panic!(
+                        "Unrecognized 0xF instruction {:#X}:{:#X}",
+                        self.pc,
+                        instruction
+                    ),
                 }
             }
 
