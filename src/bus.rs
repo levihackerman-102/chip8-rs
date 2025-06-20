@@ -1,7 +1,7 @@
 use keyboard::Keyboard;
 use display::Display;
 use ram::Ram;
-use std::fmt;
+use std::{fmt, time};
 use minifb::Window;
 
 pub struct Bus {
@@ -9,6 +9,7 @@ pub struct Bus {
     keyboard: Keyboard,
     display: Display,
     delay_timer: u8,
+    delay_timer_set_time: time::Instant,
 }
 
 
@@ -18,7 +19,8 @@ impl Bus {
             ram: Ram::new(),
             keyboard: Keyboard::new(),
             display: Display::new(),
-            delay_timer: 0
+            delay_timer: 0,
+            delay_timer_set_time: time::Instant::now(),
         }
     }
 
@@ -50,18 +52,20 @@ impl Bus {
         self.keyboard.get_key_pressed()
     }
     
-    pub fn tick(&mut self) {
-        if self.delay_timer > 0 {
-            self.delay_timer -= 1;
-        }
-    }
-
     pub fn set_delay_timer(&mut self, value: u8) {
+        self.delay_timer_set_time = time::Instant::now();
         self.delay_timer = value;
     }
 
-    pub fn get_delay_timer(&self) -> u8 {
-        self.delay_timer
+    pub fn get_delay_timer(&mut self) -> u8 {
+        let diff = time::Instant::now() - self.delay_timer_set_time;
+        let ms = diff.get_millis();
+        let ticks = ms / 16;
+        if ticks >= self.delay_timer as u64 {
+            0
+        } else {
+            self.delay_timer - ticks as u8
+        }
     }
 
     pub fn get_display_buffer(&self) -> &[u8] {
@@ -73,5 +77,17 @@ impl Bus {
 impl fmt::Debug for Bus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, " Delay timer: {:?}", self.delay_timer)
+    }
+}
+
+trait Milliseconds {
+    fn get_millis(&self) -> u64;
+}
+
+impl Milliseconds for time::Duration {
+    fn get_millis(&self) -> u64 {
+        let nanos = self.subsec_nanos() as u64;
+        let ms = (1000*1000*1000 * self.as_secs() + nanos)/(1000 * 1000);
+        ms
     }
 }
